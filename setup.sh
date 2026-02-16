@@ -2,6 +2,10 @@
 # Environment variables
 
 set -euo pipefail
+set -x
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_ALL=false
 
 bold=$(tput bold)
 dim=$(tput dim)
@@ -32,9 +36,37 @@ print_warning() {
     echo "${bold}[${yellow}Warning${reset}${bold}]   ${yellow}⚠${reset} ${dim}${yellow}$1${reset}"
 }
 
+ask_run() {
+    local
+}
+ask_run() {
+    local message="$1"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUN_ALL=false
+    # If runall was already selected, skip asking
+    if [ "$RUN_ALL" = true ]; then
+        return 0
+    fi
+
+    while true; do
+        read -rp "$message (y/n/runall): " choice
+        case "$choice" in
+            y|Y)
+                return 0
+                ;;
+            n|N)
+                return 1
+                ;;
+            runall)
+                RUN_ALL=true
+                return 0
+                ;;
+            *)
+                echo "Please answer y, n, or runall."
+                ;;
+        esac
+    done
+}
+
 
 print_step "Starting full installation..."
 
@@ -99,11 +131,14 @@ print_step "Installing yay: AUR helper"
 
 if ! command -v yay &> /dev/null; then
     print_step "Installing yay AUR helper..."
-    cd ~/.cache
-    git clone https://aur.archlinux.org/yay.git
-    cd yay
-    makepkg -si --noconfirm
+    sudo pacman -S --needed --noconfirm base-devel
+    git clone https://aur.archlinux.org/yay.git ~/.cache/buildyay
+    cd buildyay
+    makepkg -o
+    makepkg -se
+    makepkg -i --noconfirm
     cd "$SCRIPT_DIR"
+    rm -rf ~/.cache/buildyay
 fi
 
 print_success "Yay installed!"
@@ -122,14 +157,12 @@ fi
 # Read non-empty, non-comment lines
 mapfile -t PACKAGES < <(grep -vE '^\s*#|^\s*$' "$DEP_FILE" | tr -d "’“”")
 
-if [ ${#PACKAGES[@]} -eq 0 ]; then
-    print_warning "No packages found in depends.txt"
-else
-    print_step "Installing ${#PACKAGES[@]} packages..."
-    yay -S --noconfirm --needed "${PACKAGES[@]}" \
-        && print_success "All packages installed successfully" \
-        || { print_error "Failed to install some packages."; exit 1; }
-fi
+for pkg in "${PACKAGES[@]}"; do
+  if ! yay -S --needed --noconfirm "$pkg"; then
+    print_warning "Failed to install $pkg"
+  fi
+done
+
 
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––--
@@ -196,6 +229,6 @@ print_success "Git configured and dotfiles cloned."
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––--
 
-
+sudo pacman -Suy --noconfirm
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––--
