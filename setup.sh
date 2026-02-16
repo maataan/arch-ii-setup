@@ -119,7 +119,7 @@ if [ ! -f "$DEP_FILE" ]; then
 fi
 
 # Read non-empty, non-comment lines
-mapfile -t PACKAGES < <(grep -vE '#' "$DEP_FILE")
+mapfile -t PACKAGES < <(grep -vE '^\s*#|^\s*$' "$DEP_FILE")
 
 if [ ${#PACKAGES[@]} -eq 0 ]; then
     print_warning "No packages found in depends.txt"
