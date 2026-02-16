@@ -106,6 +106,7 @@ if ! command -v yay &> /dev/null; then
     cd "$SCRIPT_DIR"
 fi
 
+print_success "Yay installed!"
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––--
 
